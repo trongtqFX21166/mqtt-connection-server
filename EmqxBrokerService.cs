@@ -1,118 +1,167 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Platform.IOTHub.VietmapHub.Api.Models.EMQXBroker;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Reflection;
 using System.Text;
-using System.Text.Json.Serialization;
+using System.Text.Json;
 using System.Threading.Tasks;
 using VmlMQTT.Application.Interfaces;
 using VmlMQTT.Core.Models;
+using Platform.IOTHub.VietmapHub.Api.Models.EMQXBroker;
 
 namespace VmlMQTT.Application.Services
 {
+    public class EmqxBrokerOptions
+    {
+        public string ApiUrl { get; set; }
+        public string Username { get; set; }
+        public string Password { get; set; }
+        public string AuthenId { get; set; }
+    }
+
     public class EmqxBrokerService : IEmqxBrokerService
     {
         private readonly ILogger<EmqxBrokerService> _logger;
-        private readonly HttpClient _client;
+        private readonly HttpClient _httpClient;
         private readonly EmqxBrokerOptions _options;
 
         public EmqxBrokerService(
             ILogger<EmqxBrokerService> logger,
-            IHttpClientFactory clientFactory)
+            HttpClient httpClient,
+            IOptions<EmqxBrokerOptions> options)
         {
             _logger = logger;
+            _httpClient = httpClient;
+            _options = options.Value;
 
-            _client = clientFactory.CreateClient("EMQXBrokerApi");
+            // Configure the HttpClient
+            _httpClient.BaseAddress = new Uri(_options.ApiUrl);
+
+            // Set up basic authentication
+            var authenticationString = $"{_options.Username}:{_options.Password}";
+            var base64EncodedAuthenticationString = Convert.ToBase64String(Encoding.ASCII.GetBytes(authenticationString));
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
         }
 
-        public async Task<Models.User> AddUser(string clientId, string passwordHash)
+        public async Task<bool> CreateUserAsync(string username, string password)
         {
             try
             {
-                var resp = await _client.PostAsync($"/api/v5/authentication/{_config.AuthenId}/users"
-                    , new StringContent(JsonConvert.SerializeObject(new CreateUserRequest
-                    {
-                        user_id = clientId,
-                        password = passwordHash
-                    }), Encoding.UTF8, "application/json"));
+                _logger.LogInformation("Creating user in EMQX: {username}", username);
 
-                var data = await resp.Content.ReadAsStringAsync();
-                if (!@resp.IsSuccessStatusCode)
+                var createUserRequest = new CreateUserRequest
                 {
-                    var error = JsonConvert.DeserializeObject<Models.EMQXBroker.ErrorResponse>(data);
-                    tryPushKafkaLog(new kafkaLog
+                    user_id = username,
+                    password = password
+                };
+
+                var response = await _httpClient.PostAsJsonAsync(
+                    $"/api/v5/authentication/{_options.AuthenId}/users",
+                    createUserRequest);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Failed to create EMQX user. Status: {StatusCode}, Error: {Error}",
+                        response.StatusCode, errorContent);
+                    return false;
+                }
+
+                _logger.LogInformation("Successfully created EMQX user: {username}", username);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating EMQX user: {username}", username);
+                return false;
+            }
+        }
+
+        public async Task<bool> DeleteUserAsync(string username)
+        {
+            try
+            {
+                _logger.LogInformation("Deleting user from EMQX: {username}", username);
+
+                var response = await _httpClient.DeleteAsync($"/api/v5/authentication/{_options.AuthenId}/users/{username}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Failed to delete EMQX user. Status: {StatusCode}, Error: {Error}",
+                        response.StatusCode, errorContent);
+                    return false;
+                }
+
+                _logger.LogInformation("Successfully deleted EMQX user: {username}", username);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting EMQX user: {username}", username);
+                return false;
+            }
+        }
+
+        public async Task<bool> SetUserPermissionsAsync(string username, string[] pubTopics, string[] subTopics)
+        {
+            try
+            {
+                _logger.LogInformation("Setting permissions for EMQX user: {username}", username);
+
+                var rules = new List<AccessRight>();
+
+                // Add publish permissions
+                foreach (var topic in pubTopics)
+                {
+                    rules.Add(new AccessRight
                     {
-                        Category = nameof(kafkaLogMqttCategory.BrokerApi),
-                        Imei = clientId,
-                        Device = "companion",
-                        ResponseCode = "400",
-                        ResponseData = $"AddUser {clientId} error : {data}",
-                        Time = DateTime.Now.ToString(),
-                        TimeStamp = DateTime.UtcNow.ToSecondsUnix(),
-                        ServiceName = "emqx-api"
+                        action = "publish",
+                        permission = "allow",
+                        topic = topic
                     });
-                    throw new IOTHubException((int)HttpStatusCode.BadRequest, error.Message);
                 }
 
-                return JsonConvert.DeserializeObject<Models.User>(data);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, ex.Message);
-            }
-
-            return null;
-        }
-
-        public async Task DeleteUser(string clientId)
-        {
-            try
-            {
-                var resp = await _client.DeleteAsync($"/api/v5/authentication/{_config.AuthenId}/users/{clientId}");
-
-                if (!@resp.IsSuccessStatusCode)
+                // Add subscribe permissions
+                foreach (var topic in subTopics)
                 {
-                    var error = JsonConvert.DeserializeObject<Models.EMQXBroker.ErrorResponse>(data);
-                    throw new IOTHubException((int)HttpStatusCode.BadRequest, error.Message);
+                    rules.Add(new AccessRight
+                    {
+                        action = "subscribe",
+                        permission = "allow",
+                        topic = topic
+                    });
                 }
 
-                return JsonConvert.DeserializeObject<Models.User>(data);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, ex.Message);
-            }
-
-        }
-
-        public async Task AddRoles(string userName, IList<EMQXRole> roles)
-        {
-            try
-            {
-                var rule = roles.FirstOrDefault();
-                var resp = await _client.PutAsync($"/api/v5/authorization/sources/built_in_database/username/{userName}"
-                    , new StringContent(JsonConvert.SerializeObject(rule), Encoding.UTF8, "application/json"));
-
-                var data = await resp.Content.ReadAsStringAsync();
-                if (!@resp.IsSuccessStatusCode)
+                var role = new EMQXRole
                 {
-                    var error = JsonConvert.DeserializeObject<Models.EMQXBroker.ErrorResponse>(data);
-                    throw new IOTHubException((int)HttpStatusCode.BadRequest, error.Message);
+                    username = username,
+                    rules = rules
+                };
+
+                var response = await _httpClient.PutAsJsonAsync(
+                    $"/api/v5/authorization/sources/built_in_database/username/{username}",
+                    role);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Failed to set EMQX user permissions. Status: {StatusCode}, Error: {Error}",
+                        response.StatusCode, errorContent);
+                    return false;
                 }
+
+                _logger.LogInformation("Successfully set permissions for EMQX user: {username}", username);
+                return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, ex.Message);
+                _logger.LogError(ex, "Error setting permissions for EMQX user: {username}", username);
+                return false;
             }
         }
-
     }
-
-}
+}   

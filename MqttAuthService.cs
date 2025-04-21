@@ -36,6 +36,16 @@ namespace VmlMQTT.Application.Services
 
         public async Task<SessionInfo> StartSessionAsync(string userId, string deviceId)
         {
+            // todo:
+            //1. Check userId not existed, create new user
+
+            //2. Get randoom MQTT Broker Host
+
+            //3. Generate UserSession with Host Info
+
+            //4. Call MQTT Broker Host Api from step 2
+            //4.1 Create Account
+            //4.2 Assign Roles
             try
             {
                 _logger.LogInformation("Starting MQTT session for user {UserId} with device {DeviceId}", userId, deviceId);

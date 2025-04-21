@@ -9,8 +9,8 @@ namespace VmlMQTT.Core.Interfaces.Repositories
 {
     public interface IUserRepository
     {
-        Task<User> GetByIdAsync(string userId);
+        Task<User> GetByIdAsync(int userId);
         Task<User> AddAsync(User user);
-        Task<bool> AddDeviceIdAsync(string userId, string deviceId);
+        Task<bool> AddDeviceIdAsync(int userId, string deviceId);
     }
 }

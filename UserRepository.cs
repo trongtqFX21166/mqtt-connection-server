@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Threading.Tasks;
 using VmlMQTT.Core.Entities;
 using VmlMQTT.Core.Interfaces.Repositories;
@@ -18,7 +16,7 @@ namespace VmlMQTT.Infratructure.Repositories
             _dbContext = dbContext;
         }
 
-        public async Task<User> GetByIdAsync(string userId)
+        public async Task<User> GetByIdAsync(int userId)
         {
             return await _dbContext.Users
                 .Include(u => u.UserDeviceIds)
@@ -32,7 +30,7 @@ namespace VmlMQTT.Infratructure.Repositories
             return user;
         }
 
-        public async Task<bool> AddDeviceIdAsync(string userId, string deviceId)
+        public async Task<bool> AddDeviceIdAsync(int userId, string deviceId)
         {
             var user = await GetByIdAsync(userId);
             if (user == null)
@@ -59,6 +57,16 @@ namespace VmlMQTT.Infratructure.Repositories
 
             await _dbContext.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<UserSession> GetSessionByRefreshTokenAsync(string refreshToken)
+        {
+            return await _dbContext.UserSessions
+                .Include(s => s.User)
+                .Include(s => s.BrokerHost)
+                .Include(s => s.SessionSubTopics)
+                .Include(s => s.SessionPubTopics)
+                .FirstOrDefaultAsync(s => s.RefreshToken == refreshToken);
         }
     }
 }

@@ -11,46 +11,30 @@ using System.Threading.Tasks;
 using VmlMQTT.Application.Interfaces;
 using VmlMQTT.Core.Models;
 using Platform.IOTHub.VietmapHub.Api.Models.EMQXBroker;
+using VmlMQTT.Core.Entities;
 
 namespace VmlMQTT.Application.Services
 {
-    public class EmqxBrokerOptions
-    {
-        public string ApiUrl { get; set; }
-        public string Username { get; set; }
-        public string Password { get; set; }
-        public string AuthenId { get; set; }
-    }
 
     public class EmqxBrokerService : IEmqxBrokerService
     {
         private readonly ILogger<EmqxBrokerService> _logger;
-        private readonly HttpClient _httpClient;
-        private readonly EmqxBrokerOptions _options;
-
         public EmqxBrokerService(
-            ILogger<EmqxBrokerService> logger,
-            HttpClient httpClient,
-            IOptions<EmqxBrokerOptions> options)
+            ILogger<EmqxBrokerService> logger)
         {
             _logger = logger;
-            _httpClient = httpClient;
-            _options = options.Value;
-
-            // Configure the HttpClient
-            _httpClient.BaseAddress = new Uri(_options.ApiUrl);
-
-            // Set up basic authentication
-            var authenticationString = $"{_options.Username}:{_options.Password}";
-            var base64EncodedAuthenticationString = Convert.ToBase64String(Encoding.ASCII.GetBytes(authenticationString));
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
         }
 
-        public async Task<bool> CreateUserAsync(string username, string password)
+        public async Task<bool> CreateUserAsync(EmqxBrokerHost host, string username, string password)
         {
             try
             {
                 _logger.LogInformation("Creating user in EMQX: {username}", username);
+
+                using HttpClient _httpClient = new HttpClient();
+                var authenticationString = $"{host.UserName}:{host.Password}";
+                var base64EncodedAuthenticationString = Convert.ToBase64String(Encoding.ASCII.GetBytes(authenticationString));
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
 
                 var createUserRequest = new CreateUserRequest
                 {
@@ -59,7 +43,7 @@ namespace VmlMQTT.Application.Services
                 };
 
                 var response = await _httpClient.PostAsJsonAsync(
-                    $"/api/v5/authentication/{_options.AuthenId}/users",
+                    $"/api/v5/authentication/password_based%3Abuilt_in_database/users",
                     createUserRequest);
 
                 if (!response.IsSuccessStatusCode)
@@ -80,13 +64,18 @@ namespace VmlMQTT.Application.Services
             }
         }
 
-        public async Task<bool> DeleteUserAsync(string username)
+        public async Task<bool> DeleteUserAsync(EmqxBrokerHost host, string username)
         {
             try
             {
                 _logger.LogInformation("Deleting user from EMQX: {username}", username);
 
-                var response = await _httpClient.DeleteAsync($"/api/v5/authentication/{_options.AuthenId}/users/{username}");
+                using HttpClient _httpClient = new HttpClient();
+                var authenticationString = $"{host.UserName}:{host.Password}";
+                var base64EncodedAuthenticationString = Convert.ToBase64String(Encoding.ASCII.GetBytes(authenticationString));
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
+
+                var response = await _httpClient.DeleteAsync($"/api/v5/authentication/password_based%3Abuilt_in_database/users/{username}");
 
                 if (!response.IsSuccessStatusCode)
                 {
@@ -106,11 +95,15 @@ namespace VmlMQTT.Application.Services
             }
         }
 
-        public async Task<bool> SetUserPermissionsAsync(string username, string[] pubTopics, string[] subTopics)
+        public async Task<bool> SetUserPermissionsAsync(EmqxBrokerHost host, string username, string[] pubTopics, string[] subTopics)
         {
             try
             {
                 _logger.LogInformation("Setting permissions for EMQX user: {username}", username);
+                using HttpClient _httpClient = new HttpClient();
+                var authenticationString = $"{host.UserName}:{host.Password}";
+                var base64EncodedAuthenticationString = Convert.ToBase64String(Encoding.ASCII.GetBytes(authenticationString));
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
 
                 var rules = new List<AccessRight>();
 

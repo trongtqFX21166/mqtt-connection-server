@@ -29,7 +29,7 @@ namespace VmlMQTT.Infratructure.Repositories
                 .FirstOrDefaultAsync(s => s.UniqueId == id);
         }
 
-        public async Task<UserSession> GetByUserIdAndDeviceIdAsync(string userId, string deviceId)
+        public async Task<UserSession> GetByUserIdAndDeviceIdAsync(int userId, string deviceId)
         {
             // Find the device
             var device = await _dbContext.UserDeviceIds
@@ -49,7 +49,7 @@ namespace VmlMQTT.Infratructure.Repositories
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<List<UserSession>> GetAllByUserIdAsync(string userId)
+        public async Task<List<UserSession>> GetAllByUserIdAsync(int userId)
         {
             return await _dbContext.UserSessions
                 .Where(s => s.UserId == userId)
@@ -89,17 +89,8 @@ namespace VmlMQTT.Infratructure.Repositories
                 return false;
 
             // Check if the session is still valid (not expired)
-            return !session.IsRefreshTokenExpired;
+            return !session.IsActive;
         }
 
-        public async Task ExpireRefreshTokenAsync(Guid id)
-        {
-            var session = await _dbContext.UserSessions.FindAsync(id);
-            if (session != null)
-            {
-                session.IsRefreshTokenExpired = true;
-                await _dbContext.SaveChangesAsync();
-            }
-        }
     }
 }

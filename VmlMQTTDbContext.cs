@@ -115,5 +115,32 @@ namespace VmlMQTT.Infratructure.Data
                 entity.Property(e => e.IsActive).IsRequired();
             });
         }
+
+
+        public static void Seed(VmlMQTTDbContext context)
+        {
+            // Check if data already exists
+            if (context.EmqxBrokerHosts.Any())
+                return;
+
+            // Add broker host
+            context.EmqxBrokerHosts.Add(new EmqxBrokerHost
+            {
+                Id = 1,
+                Ip = "192.168.8.164",
+                UserName = "admin",
+                Password = "Vietmap2021!@#",
+                TopicClientRequestPattern = "user/{userId}/request",
+                TopicClientResponsePattern = "user/{userId}/response",
+                TopicNotifyPattern = "user/{userId}/notify",
+                TotalAccounts = 0,
+                TotalConnections = 0,
+                LastModified = DateTime.UtcNow,
+                LastModifiedBy = DateTime.UtcNow,
+                IsActive = true
+            });
+
+            context.SaveChanges();
+        }
     }
 }

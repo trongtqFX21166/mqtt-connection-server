@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -31,8 +32,7 @@ namespace VmlMQTT.Infratructure.Repositories
         public async Task<EmqxBrokerHost> GetLeastLoadedBrokerAsync()
         {
             // Get broker with the least number of active sessions
-            var brokerSessionCounts = await _dbContext.UserSessions
-                .Where(s => !s.IsRefreshTokenExpired)
+            var brokerSessionCounts = await _dbContext.UserSessions                
                 .GroupBy(s => s.Host)
                 .Select(g => new { Host = g.Key, Count = g.Count() })
                 .ToListAsync();

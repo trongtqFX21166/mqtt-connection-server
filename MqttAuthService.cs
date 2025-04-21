@@ -9,6 +9,7 @@ using VmlMQTT.Application.DTOs;
 using VmlMQTT.Application.Interfaces;
 using VmlMQTT.Core.Entities;
 using VmlMQTT.Core.Interfaces.Repositories;
+using VmlMQTT.Core.Models;
 
 namespace VmlMQTT.Application.Services
 {
@@ -18,6 +19,7 @@ namespace VmlMQTT.Application.Services
         private readonly IUserSessionRepository _userSessionRepository;
         private readonly IEmqxBrokerHostRepository _brokerRepository;
         private readonly IEmqxBrokerService _emqxBrokerService;
+        private readonly IUserRepository _userRepository;
 
         // Default session expiration in days
         private const int DEFAULT_SESSION_EXPIRATION_DAYS = 7;
@@ -26,39 +28,55 @@ namespace VmlMQTT.Application.Services
             ILogger<MqttAuthService> logger,
             IUserSessionRepository userSessionRepository,
             IEmqxBrokerHostRepository brokerRepository,
-            IEmqxBrokerService emqxBrokerService)
+            IEmqxBrokerService emqxBrokerService,
+            IUserRepository userRepository)
         {
             _logger = logger;
             _userSessionRepository = userSessionRepository;
             _brokerRepository = brokerRepository;
             _emqxBrokerService = emqxBrokerService;
+
+            _userRepository = userRepository;
         }
 
-        public async Task<SessionInfo> StartSessionAsync(string userId, string deviceId)
+        public async Task<SessionInfo> StartSessionAsync(MqttStartSessionRequest request)
         {
-            // todo:
-            //1. Check userId not existed, create new user
-
-            //2. Get randoom MQTT Broker Host
-
-            //3. Generate UserSession with Host Info
-
-            //4. Call MQTT Broker Host Api from step 2
-            //4.1 Create Account
-            //4.2 Assign Roles
             try
             {
+                if (request == null)
+                {
+                    throw new IOTHubException(400, "Request cannot be null");
+                }
+
+                int userId = request.UserId;
+                string deviceId = request.DeviceInfo;
+
                 _logger.LogInformation("Starting MQTT session for user {UserId} with device {DeviceId}", userId, deviceId);
 
-                // Step 3: Get the least loaded broker
+                // Step 1: Check if user exists, create if not
+                var user = await _userRepository.GetByIdAsync(userId);
+                if (user == null)
+                {
+                    _logger.LogInformation("User {UserId} not found. Creating new user.", userId);
+                    user = await _userRepository.AddAsync(new User
+                    {
+                        VMLUserId = userId,
+                        Phone = "Unknown" // Could be extracted from request details if needed
+                    });
+                }
+
+                // Register the device if not already registered
+                await _userRepository.AddDeviceIdAsync(userId, deviceId);
+
+                // Step 2: Get the least loaded broker
                 var broker = await _brokerRepository.GetLeastLoadedBrokerAsync();
                 if (broker == null)
                 {
                     _logger.LogError("No available MQTT brokers found");
-                    return null;
+                    throw new IOTHubException(400, "No available MQTT brokers found");
                 }
 
-                // Generate unique credentials for this session
+                // Step 3-4: Generate unique credentials and create session
                 var sessionId = Guid.NewGuid();
                 var brokerUsername = $"user_{userId}_{sessionId.ToString("N").Substring(0, 8)}";
                 var brokerPassword = GenerateRandomPassword();
@@ -73,7 +91,35 @@ namespace VmlMQTT.Application.Services
                 if (!userCreated)
                 {
                     _logger.LogError("Failed to create broker user for {UserId}", userId);
-                    return null;
+                    throw new IOTHubException(500, "Failed to create MQTT broker user");
+                }
+
+                // Create session sub/pub topics
+                var sessionSubTopics = new List<SessionSubTopic>();
+                var sessionPubTopics = new List<SessionPubTopic>();
+
+                foreach (var topic in subTopics)
+                {
+                    sessionSubTopics.Add(new SessionSubTopic
+                    {
+                        UniqueId = Guid.NewGuid(),
+                        Name = $"Subscribe_{topic}",
+                        TopicPattern = topic,
+                        IsActive = true,
+                        UserSessionId = sessionId
+                    });
+                }
+
+                foreach (var topic in pubTopics)
+                {
+                    sessionPubTopics.Add(new SessionPubTopic
+                    {
+                        UniqueId = Guid.NewGuid(),
+                        Name = $"Publish_{topic}",
+                        TopicPattern = topic,
+                        IsActive = true,
+                        UserSessionId = sessionId
+                    });
                 }
 
                 // Step 4: Set user permissions in EMQX broker
@@ -87,10 +133,10 @@ namespace VmlMQTT.Application.Services
                     _logger.LogError("Failed to set broker permissions for {UserId}", userId);
                     // Cleanup the created user
                     await _emqxBrokerService.DeleteUserAsync(brokerUsername);
-                    return null;
+                    throw new IOTHubException(500, "Failed to set MQTT broker permissions");
                 }
 
-                // Create and save the session
+                // Step 5-6: Create and save the session
                 var userSession = new UserSession
                 {
                     UniqueId = sessionId,
@@ -100,15 +146,17 @@ namespace VmlMQTT.Application.Services
                     Type = "MQTT",
                     SubTopics = subTopics,
                     PubTopics = pubTopics,
-                    Password = brokerPassword,  // Consider encrypting this
+                    Password = brokerPassword,
                     RefreshToken = refreshToken,
                     IsRefreshTokenExpired = false,
-                    TimestampUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                    TimestampUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    SessionSubTopics = sessionSubTopics,
+                    SessionPubTopics = sessionPubTopics
                 };
 
                 await _userSessionRepository.AddAsync(userSession);
 
-                // Step 5: Return session info
+                // Step 7: Return session info for client to connect to broker
                 return new SessionInfo
                 {
                     SessionId = sessionId,
@@ -121,10 +169,15 @@ namespace VmlMQTT.Application.Services
                     PermittedSubscribeTopics = subTopics
                 };
             }
+            catch (IOTHubException)
+            {
+                // Just re-throw IOTHubExceptions as they already have appropriate error details
+                throw;
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error starting MQTT session for user {UserId}", userId);
-                return null;
+                _logger.LogError(ex, "Error starting MQTT session for user {UserId}", request?.UserId);
+                throw new IOTHubException(500, $"Error starting MQTT session: {ex.Message}");
             }
         }
 
@@ -140,6 +193,12 @@ namespace VmlMQTT.Application.Services
                     return false;
                 }
 
+                if (session.IsRefreshTokenExpired)
+                {
+                    _logger.LogInformation("Session {SessionId} already expired", sessionId);
+                    return true; // Session already handled
+                }
+
                 // Step 9: Remove user from EMQX broker
                 // We need to reconstruct the broker username used
                 var brokerUsername = $"user_{session.UserId}_{sessionId.ToString("N").Substring(0, 8)}";
@@ -153,6 +212,7 @@ namespace VmlMQTT.Application.Services
 
                 // Mark session as expired
                 await _userSessionRepository.ExpireRefreshTokenAsync(sessionId);
+                _logger.LogInformation("Successfully terminated session {SessionId}", sessionId);
 
                 return true;
             }
@@ -195,6 +255,47 @@ namespace VmlMQTT.Application.Services
             }
         }
 
+        public async Task<bool> ValidateCredentialsAsync(string username, string password)
+        {
+            // Extract session ID from username pattern
+            try
+            {
+                var parts = username.Split('_');
+                if (parts.Length < 3 || parts[0] != "user")
+                {
+                    _logger.LogWarning("Invalid username format: {Username}", username);
+                    return false;
+                }
+
+                var userId = parts[1];
+                var sessionIdPart = parts[2];
+
+                // Find all sessions for this user
+                var userSessions = await _userSessionRepository.GetAllByUserIdAsync(userId);
+
+                // Find the specific session that matches both the ID part and password
+                var session = userSessions.FirstOrDefault(s =>
+                    s.UniqueId.ToString("N").StartsWith(sessionIdPart) &&
+                    s.Password == password &&
+                    !s.IsRefreshTokenExpired);
+
+                if (session == null)
+                {
+                    _logger.LogWarning("No valid session found for user {UserId} with session part {SessionIdPart}",
+                        userId, sessionIdPart);
+                    return false;
+                }
+
+                _logger.LogInformation("Successfully validated credentials for user {UserId}", userId);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating MQTT credentials for {Username}", username);
+                return false;
+            }
+        }
+
         public async Task<bool> ValidateTopicPermissionAsync(string username, string topic, bool isPublish)
         {
             try
@@ -203,6 +304,7 @@ namespace VmlMQTT.Application.Services
                 var parts = username.Split('_');
                 if (parts.Length < 3 || parts[0] != "user")
                 {
+                    _logger.LogWarning("Invalid username format for topic validation: {Username}", username);
                     return false;
                 }
 
@@ -219,6 +321,7 @@ namespace VmlMQTT.Application.Services
 
                 if (session == null)
                 {
+                    _logger.LogWarning("No valid session found for topic validation for user {UserId}", userId);
                     return false;
                 }
 
@@ -230,10 +333,13 @@ namespace VmlMQTT.Application.Services
                 {
                     if (IsTopicMatch(allowedTopic, topic))
                     {
+                        _logger.LogInformation("Topic {Topic} matched pattern {Pattern} for user {UserId}",
+                            topic, allowedTopic, userId);
                         return true;
                     }
                 }
 
+                _logger.LogWarning("No matching topic permission found for {Topic} for user {UserId}", topic, userId);
                 return false;
             }
             catch (Exception ex)
@@ -295,8 +401,14 @@ namespace VmlMQTT.Application.Services
             var topicParts = topic.Split('/');
 
             // If the pattern ends with #, it matches any number of levels
-            if (patternParts[patternParts.Length - 1] == "#")
+            if (patternParts.Length > 0 && patternParts[patternParts.Length - 1] == "#")
             {
+                // If pattern is just "#", it matches everything
+                if (patternParts.Length == 1)
+                {
+                    return true;
+                }
+
                 // Remove the # and check if the topic starts with the pattern prefix
                 var prefix = string.Join("/", patternParts.Take(patternParts.Length - 1));
                 return topic.StartsWith(prefix + "/") || topic == prefix;
@@ -319,4 +431,5 @@ namespace VmlMQTT.Application.Services
             return true;
         }
     }
+}
 }

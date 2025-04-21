@@ -9,7 +9,7 @@ namespace VmlMQTT.Core.Entities
     public class UserDeviceId
     {
         public Guid UniqueId { get; set; }
-        public string UserId { get; set; }
+        public int UserId { get; set; }
         public string DeviceId { get; set; }
 
         // Navigation properties

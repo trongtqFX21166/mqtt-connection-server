@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,10 +14,12 @@ namespace VmlMQTT.Infratructure.Repositories
     public class UserSessionRepository : IUserSessionRepository
     {
         private readonly VmlMQTTDbContext _dbContext;
+        private readonly ILogger<UserSessionRepository> _logger;
 
-        public UserSessionRepository(VmlMQTTDbContext dbContext)
+        public UserSessionRepository(VmlMQTTDbContext dbContext, ILogger<UserSessionRepository> logger)
         {
             _dbContext = dbContext;
+            _logger = logger;
         }
 
         public async Task<UserSession> GetByIdAsync(Guid id)
@@ -24,9 +27,15 @@ namespace VmlMQTT.Infratructure.Repositories
             return await _dbContext.UserSessions
                 .Include(s => s.User)
                 .Include(s => s.BrokerHost)
-                .Include(s => s.SessionSubTopics)
-                .Include(s => s.SessionPubTopics)
                 .FirstOrDefaultAsync(s => s.UniqueId == id);
+        }
+
+        public async Task<UserSession> GetByRefreshTokenAsync(string refreshToken)
+        {
+            return await _dbContext.UserSessions
+                .Include(s => s.User)
+                .Include(s => s.BrokerHost)
+                .FirstOrDefaultAsync(s => s.RefreshToken == refreshToken && s.IsActive == true);
         }
 
         public async Task<UserSession> GetByUserIdAndDeviceIdAsync(int userId, string deviceId)
@@ -42,8 +51,6 @@ namespace VmlMQTT.Infratructure.Repositories
             return await _dbContext.UserSessions
                 .Include(s => s.User)
                 .Include(s => s.BrokerHost)
-                .Include(s => s.SessionSubTopics)
-                .Include(s => s.SessionPubTopics)
                 .Where(s => s.UserId == userId)
                 .OrderByDescending(s => s.Date)
                 .FirstOrDefaultAsync();
@@ -54,15 +61,20 @@ namespace VmlMQTT.Infratructure.Repositories
             return await _dbContext.UserSessions
                 .Where(s => s.UserId == userId)
                 .Include(s => s.BrokerHost)
-                .Include(s => s.SessionSubTopics)
-                .Include(s => s.SessionPubTopics)
                 .ToListAsync();
         }
 
         public async Task<UserSession> AddAsync(UserSession userSession)
         {
-            _dbContext.UserSessions.Add(userSession);
-            await _dbContext.SaveChangesAsync();
+            try
+            {
+                _dbContext.UserSessions.Add(userSession);
+                await _dbContext.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+            }
             return userSession;
         }
 

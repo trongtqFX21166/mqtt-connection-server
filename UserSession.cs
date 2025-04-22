@@ -4,6 +4,7 @@
     {
         public Guid UniqueId { get; set; }
         public int UserId { get; set; }
+        public string DeviceId { get; set; } = string.Empty;
         public string Host { get; set; }
         public DateTime Date { get; set; }
         public string Type { get; set; }
@@ -18,7 +19,5 @@
         // Navigation properties
         public User User { get; set; }
         public EmqxBrokerHost BrokerHost { get; set; }
-        public List<SessionSubTopic> SessionSubTopics { get; set; } = new List<SessionSubTopic>();
-        public List<SessionPubTopic> SessionPubTopics { get; set; } = new List<SessionPubTopic>();
     }
 }

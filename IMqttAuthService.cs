@@ -4,14 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using VmlMQTT.Application.DTOs;
+using VmlMQTT.Core.Entities;
 
 namespace VmlMQTT.Application.Interfaces
 {
     public interface IMqttAuthService
     {
-        Task<SessionInfo> StartSessionAsync(string userId, string deviceId);
+        Task<SessionInfo> StartSessionAsync(MqttStartSessionRequest request);
         Task<bool> EndSessionAsync(Guid sessionId);
-        Task<bool> ValidateCredentialsAsync(string username, string password);
-        Task<bool> ValidateTopicPermissionAsync(string username, string topic, bool isPublish);
     }
 }

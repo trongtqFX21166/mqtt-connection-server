@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using VmlMQTT.Application.DTOs;
 using VmlMQTT.Application.Interfaces;
 using VmlMQTT.Core.Entities;
@@ -15,10 +16,11 @@ namespace VmlMQTT.Application.Services
         private readonly IEmqxBrokerService _emqxBrokerService;
         private readonly IUserRepository _userRepository;
 
-        // Default session expiration in days
-        private const int DEFAULT_SESSION_EXPIRATION_DAYS = 7;
-
+        private readonly ClientSetting _clientSetting = new ClientSetting();
+        private readonly ServerSetting _serverSetting = new ServerSetting();
+        
         public MqttAuthService(
+            IConfiguration configuration,
             ILogger<MqttAuthService> logger,
             IUserSessionRepository userSessionRepository,
             IEmqxBrokerHostRepository brokerRepository,
@@ -31,6 +33,9 @@ namespace VmlMQTT.Application.Services
             _emqxBrokerService = emqxBrokerService;
 
             _userRepository = userRepository;
+
+            _clientSetting = configuration.GetValue<ClientSetting>("ClientSetting");
+            _serverSetting = configuration.GetValue<ServerSetting>("ServerSetting");
         }
 
         public async Task<SessionInfo> StartSessionAsync(MqttStartSessionRequest request)
@@ -59,6 +64,19 @@ namespace VmlMQTT.Application.Services
                     });
                 }
 
+                var existedSession = await _userSessionRepository.GetByRefreshTokenAsync(request.RefreshToken);
+                if (existedSession != null) {
+                    return new SessionInfo
+                    {
+                        SessionId = existedSession.UniqueId,
+                        BrokerHost = existedSession.Host,
+                        AccessKey = existedSession.RefreshToken,
+                        SubscribeTopics = GenerateSubscribeTopics(existedSession.UniqueId, existedSession.BrokerHost),
+                        PublishTopics = GeneratePublishTopics(existedSession.UniqueId, existedSession.BrokerHost),
+                    };
+                }
+            
+
                 // Register the device if not already registered
                 //todo: if deviceId already added please don't add
                 await _userRepository.AddDeviceIdAsync(userId, deviceId);
@@ -73,7 +91,7 @@ namespace VmlMQTT.Application.Services
 
                 // Step 3-4: Generate unique credentials and create session
                 var sessionId = Guid.NewGuid();
-                var brokerUsername = $"user_{userId}_{sessionId.ToString("N").Substring(0, 8)}";
+                var brokerUsername = request.RefreshToken;
                 var brokerPassword = GenerateRandomPassword();
 
                 // Create pub/sub topic patterns for this user
@@ -88,40 +106,15 @@ namespace VmlMQTT.Application.Services
                     throw new IOTHubException(500, "Failed to create MQTT broker user");
                 }
 
-                // Create session sub/pub topics
-                var sessionSubTopics = new List<SessionSubTopic>();
-                var sessionPubTopics = new List<SessionPubTopic>();
-
-                foreach (var topic in subTopics)
-                {
-                    sessionSubTopics.Add(new SessionSubTopic
-                    {
-                        UniqueId = Guid.NewGuid(),
-                        Name = $"Subscribe_{topic}",
-                        TopicPattern = topic,
-                        IsActive = true,
-                        UserSessionId = sessionId
-                    });
-                }
-
-                foreach (var topic in pubTopics)
-                {
-                    sessionPubTopics.Add(new SessionPubTopic
-                    {
-                        UniqueId = Guid.NewGuid(),
-                        Name = $"Publish_{topic}",
-                        TopicPattern = topic,
-                        IsActive = true,
-                        UserSessionId = sessionId
-                    });
-                }
 
                 // Step 4: Set user permissions in EMQX broker
                 var permissionsSet = await _emqxBrokerService.SetUserPermissionsAsync(
                     broker,
                     brokerUsername,
                     pubTopics.ToArray(),
-                    subTopics.ToArray());
+                    subTopics.ToArray(),
+                    _clientSetting.DenyPublishTopics.ToArray(),
+                    _clientSetting.AllowSubTopics.ToArray());
 
                
                 // Step 5-6: Create and save the session
@@ -130,14 +123,15 @@ namespace VmlMQTT.Application.Services
                     UniqueId = sessionId,
                     UserId = userId,
                     Host = broker.Ip,
+                    BrokerHost = broker,
                     Date = DateTime.UtcNow,
                     Type = "MQTT",
                     SubTopics = subTopics,
                     PubTopics = pubTopics,
                     Password = brokerPassword,
+                    RefreshToken = request.RefreshToken,
                     TimestampUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                    SessionSubTopics = sessionSubTopics,
-                    SessionPubTopics = sessionPubTopics
+                    IsActive = true
                 };
 
                 await _userSessionRepository.AddAsync(userSession);
@@ -203,11 +197,11 @@ namespace VmlMQTT.Application.Services
         private List<string> GenerateSubscribeTopics(Guid seesionId, EmqxBrokerHost broker)
         {
             // Generate subscribe topic patterns based on broker configuration
-            var topics = new List<string>
-            {
-                $"vml_notify/{broker.Id}/{seesionId}",
-                $"vml_command_client_request/{broker.Id}/{seesionId}"
-            };
+            var topics = new List<string>();
+
+            foreach (var topic in _clientSetting.AllowSubTopics) { 
+                topics.Add(topic.Replace("hostid", broker.Id.ToString()).Replace("sessionid", seesionId.ToString()));
+            }
 
             return topics;
         }
@@ -215,17 +209,19 @@ namespace VmlMQTT.Application.Services
         private List<string> GeneratePublishTopics(Guid seesionId, EmqxBrokerHost broker)
         {
             // Generate publish topic patterns based on broker configuration
-            var topics = new List<string>
+            var topics = new List<string>();
+
+            foreach (var topic in _clientSetting.AllowPublishTopics)
             {
-               $"vml_command_client_response/{broker.Id}/{seesionId}"
-            };
+                topics.Add(topic.Replace("hostid", broker.Id.ToString()).Replace("sessionid", seesionId.ToString()));
+            }
 
             return topics;
         }
 
         private string GenerateRandomPassword(int length = 16)
         {
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()";
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
             var random = new Random();
             return new string(Enumerable.Repeat(chars, length)
                 .Select(s => s[random.Next(s.Length)]).ToArray());

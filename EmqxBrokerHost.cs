@@ -18,12 +18,6 @@ namespace VmlMQTT.Core.Entities
         public int TotalAccounts { get; set; }
         public int TotalConnections { get; set; }
 
-
-        public string TopicClientRequestPattern { get; set; }
-        public string TopicClientResponsePattern { get; set; }
-        public string TopicNotifyPattern { get; set; }
-
-
         public DateTime LastModified { get; set; }
 
         public DateTime LastModifiedBy { get; set; }

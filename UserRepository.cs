@@ -32,31 +32,45 @@ namespace VmlMQTT.Infratructure.Repositories
 
         public async Task<bool> AddDeviceIdAsync(int userId, string deviceId)
         {
-            var user = await GetByIdAsync(userId);
-            if (user == null)
+            try
             {
-                return false;
+                // Check if device ID already exists directly in the database
+                var existingDevice = await _dbContext.UserDeviceIds
+                    .FirstOrDefaultAsync(d => d.UserId == userId && d.DeviceId == deviceId);
+
+                if (existingDevice != null)
+                {
+                    return true; // Already exists, no need to add
+                }
+
+                // Add new device ID
+                _dbContext.UserDeviceIds.Add(new UserDeviceId
+                {
+                    UserId = userId,
+                    DeviceId = deviceId,
+                    UniqueId = Guid.NewGuid()
+                });
+
+                await _dbContext.SaveChangesAsync();
+                return true;
             }
-
-            // Check if device ID already exists
-            var existingDevice = user.UserDeviceIds
-                .FirstOrDefault(d => d.DeviceId == deviceId);
-
-            if (existingDevice != null)
+            catch (DbUpdateConcurrencyException)
             {
-                return true; // Already exists, no need to add
+                // If we get here, it likely means another process added the device concurrently
+                // Check again to see if it exists now
+                var existingDevice = await _dbContext.UserDeviceIds
+                    .FirstOrDefaultAsync(d => d.UserId == userId && d.DeviceId == deviceId);
+
+                return existingDevice != null;
             }
-
-            // Add new device ID
-            user.UserDeviceIds.Add(new UserDeviceId
+            catch (DbUpdateException)
             {
-                UserId = userId,
-                DeviceId = deviceId,
-                UniqueId = Guid.NewGuid()
-            });
+                // Handle unique constraint violation
+                var existingDevice = await _dbContext.UserDeviceIds
+                    .FirstOrDefaultAsync(d => d.UserId == userId && d.DeviceId == deviceId);
 
-            await _dbContext.SaveChangesAsync();
-            return true;
+                return existingDevice != null;
+            }
         }
 
         public async Task<UserSession> GetSessionByRefreshTokenAsync(string refreshToken)
@@ -64,8 +78,6 @@ namespace VmlMQTT.Infratructure.Repositories
             return await _dbContext.UserSessions
                 .Include(s => s.User)
                 .Include(s => s.BrokerHost)
-                .Include(s => s.SessionSubTopics)
-                .Include(s => s.SessionPubTopics)
                 .FirstOrDefaultAsync(s => s.RefreshToken == refreshToken);
         }
     }

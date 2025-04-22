@@ -31,10 +31,7 @@ namespace VmlMQTT.Application.Services
             {
                 _logger.LogInformation("Creating user in EMQX: {username}", username);
 
-                using HttpClient _httpClient = new HttpClient();
-                var authenticationString = $"{host.UserName}:{host.Password}";
-                var base64EncodedAuthenticationString = Convert.ToBase64String(Encoding.ASCII.GetBytes(authenticationString));
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
+                using HttpClient _httpClient = getClient(host);
 
                 var createUserRequest = new CreateUserRequest
                 {
@@ -70,10 +67,7 @@ namespace VmlMQTT.Application.Services
             {
                 _logger.LogInformation("Deleting user from EMQX: {username}", username);
 
-                using HttpClient _httpClient = new HttpClient();
-                var authenticationString = $"{host.UserName}:{host.Password}";
-                var base64EncodedAuthenticationString = Convert.ToBase64String(Encoding.ASCII.GetBytes(authenticationString));
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
+                using HttpClient _httpClient = getClient(host);
 
                 var response = await _httpClient.DeleteAsync($"/api/v5/authentication/password_based%3Abuilt_in_database/users/{username}");
 
@@ -95,15 +89,12 @@ namespace VmlMQTT.Application.Services
             }
         }
 
-        public async Task<bool> SetUserPermissionsAsync(EmqxBrokerHost host, string username, string[] pubTopics, string[] subTopics)
+        public async Task<bool> SetUserPermissionsAsync(EmqxBrokerHost host, string username, string[] pubTopics, string[] subTopics, string[] denyPubTopics, string[] denySubTopics)
         {
             try
             {
                 _logger.LogInformation("Setting permissions for EMQX user: {username}", username);
-                using HttpClient _httpClient = new HttpClient();
-                var authenticationString = $"{host.UserName}:{host.Password}";
-                var base64EncodedAuthenticationString = Convert.ToBase64String(Encoding.ASCII.GetBytes(authenticationString));
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
+                using HttpClient _httpClient = getClient(host);
 
                 var rules = new List<AccessRight>();
 
@@ -128,6 +119,29 @@ namespace VmlMQTT.Application.Services
                         topic = topic
                     });
                 }
+
+                // deny publish permissions
+                foreach (var topic in denyPubTopics)
+                {
+                    rules.Add(new AccessRight
+                    {
+                        action = "publish",
+                        permission = "deny",
+                        topic = topic
+                    });
+                }
+
+                // deny sub permissions
+                foreach (var topic in denySubTopics)
+                {
+                    rules.Add(new AccessRight
+                    {
+                        action = "subscribe",
+                        permission = "deny",
+                        topic = topic
+                    });
+                }
+
 
                 var role = new EMQXRole
                 {
@@ -155,6 +169,18 @@ namespace VmlMQTT.Application.Services
                 _logger.LogError(ex, "Error setting permissions for EMQX user: {username}", username);
                 return false;
             }
+        }
+    
+        private HttpClient getClient(EmqxBrokerHost host)
+        {
+            HttpClient _httpClient = new HttpClient();
+            var authenticationString = $"{host.UserName}:{host.Password}";
+            var base64EncodedAuthenticationString = Convert.ToBase64String(Encoding.ASCII.GetBytes(authenticationString));
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
+            _httpClient.BaseAddress = new Uri($"http://{host.Ip}:18083");
+
+            return _httpClient;
+
         }
     }
 }   

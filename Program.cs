@@ -1,67 +1,52 @@
-using System;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using VmlMQTT.Application.Interfaces;
-using VmlMQTT.Application.Services;
-using VmlMQTT.Application.Services.Interfaces;
-using VmlMQTT.Core.Interfaces.Repositories;
-using VmlMQTT.Infrastructure.Data;
-using VmlMQTT.Infrastructure.Repositories;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Platform.KafkaClient.Models;
+using Platform.KafkaClient;
+using Platform.Serilog;
 using VmlMQTT.Infratructure.Data;
+using Microsoft.EntityFrameworkCore;
+using VmlMQTT.Core.Interfaces.Repositories;
 using VmlMQTT.Infratructure.Repositories;
+using Platfrom.MQTTnet;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-// Configure PostgreSQL
-builder.Services.AddDbContext<VmlMQTTDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Register repositories
-builder.Services.AddScoped<IUserSessionRepository, UserSessionRepository>();
-builder.Services.AddScoped<IEmqxBrokerHostRepository, EmqxBrokerHostRepository>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-
-// Register application services
-builder.Services.AddScoped<IVmlAuthService, VmlAuthService>();
-builder.Services.AddScoped<IMqttAuthService, MqttAuthService>();
-
-// Configure and register EmqxBrokerService with HttpClient
-builder.Services.Configure<EmqxBrokerOptions>(
-    builder.Configuration.GetSection("EmqxBroker"));
-
-builder.Services.AddHttpClient<IEmqxBrokerService, EmqxBrokerService>();
-
-// Add health checks
-builder.Services.AddHealthChecks()
-    .AddDbContextCheck<VmlMQTTDbContext>();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+namespace VmlMQTT.ConsumerNotifyMessage.Service
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-
-    // Migrate database on startup in development
-    using (var scope = app.Services.CreateScope())
+    internal class Program
     {
-        var dbContext = scope.ServiceProvider.GetRequiredService<VmlMQTTDbContext>();
-        dbContext.Database.Migrate();
+        static void Main(string[] args)
+        {
+            using IHost host = CreateHostBuilder(args).Build();
+
+            host.Run();
+        }
+
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureServices((context, services) =>
+                {
+                    services.AddHostedService<HostedService>();
+                    services.Configure<ConsumerConfig>("Consumer",
+                        context.Configuration.GetSection("Consumer"));
+                    services.AddSingleton<IConsumer>(s =>
+                    {
+                        var settings = s.GetRequiredService<IOptionsMonitor<ConsumerConfig>>().Get("Consumer");
+                        var logger = s.GetRequiredService<ILogger<Consumer>>();
+
+                        return new Consumer(logger, settings);
+                    });
+
+                    services.AddDbContext<VmlMQTTDbContext>(options =>
+    options.UseNpgsql(context.Configuration["ConnectionStrings:DefaultConnection"]),
+    ServiceLifetime.Singleton,
+    ServiceLifetime.Singleton);
+
+                    services.AddSingleton<IMQTTPublish, MQTTPublish>();
+
+                    services.AddSingleton<IUserSessionRepository, UserSessionRepository>();
+                    services.AddSingleton<IUserRepository, UserRepository>();
+                    services.AddSingleton<IEmqxBrokerHostRepository, EmqxBrokerHostRepository>();
+                }).RegisterSerilogConfig();
     }
 }
-
-app.UseHttpsRedirection();
-app.UseAuthorization();
-app.MapControllers();
-app.MapHealthChecks("/health");
-
-app.Run();

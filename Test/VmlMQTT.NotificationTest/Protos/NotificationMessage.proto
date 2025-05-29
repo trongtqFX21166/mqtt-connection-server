@@ -1,0 +1,19 @@
+﻿syntax = "proto3";
+option csharp_namespace = "VmlMQTT.NotificationTest.Protos";
+
+message NotificationMessage {
+  string to = 1;
+  string message_type = 2;
+  string message = 3;
+  int64 timestamp = 4;
+  
+  // Additional fields
+  map<string, string> attributes = 5;
+  NotificationPriority priority = 6;
+  
+  enum NotificationPriority {
+    NORMAL = 0;
+    HIGH = 1;
+    URGENT = 2;
+  }
+}

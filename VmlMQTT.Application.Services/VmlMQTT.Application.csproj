@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Common\Platform.KafkaClient\Platform.KafkaClient.csproj" />
+    <ProjectReference Include="..\Common\Platfrom.MQTTnet\Platfrom.MQTTnet.csproj" />
+    <ProjectReference Include="..\Common\VietmapCloud.Shared.Redis\VietmapCloud.Shared.Redis.csproj" />
+    <ProjectReference Include="..\VmlMQTT.Core\VmlMQTT.Core.csproj" />
+  </ItemGroup>
+
+</Project>

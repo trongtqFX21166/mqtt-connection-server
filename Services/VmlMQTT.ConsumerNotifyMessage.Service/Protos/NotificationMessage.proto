@@ -1,0 +1,19 @@
+syntax = "proto3";
+option csharp_namespace = "VmlMQTT.ConsumerNotifyMessage.Service.Protos";
+
+message NotificationMessage {
+  HeaderNotification header = 1;
+  BodyNotification body = 2;
+}
+
+message HeaderNotification {
+  int64 timestamp = 1;    // Unix timestamp in milliseconds
+  string message_type = 2; // Type of the message
+}
+
+// Body section containing title and message content
+message BodyNotification {
+  string title = 1;   
+  string body = 2;  
+  optional string image_url = 3;
+}

@@ -1,0 +1,133 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35527.113
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{6EA82BDE-6766-40B8-A695-06DB9664FD88}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Platform.KafkaClient", "Common\Platform.KafkaClient\Platform.KafkaClient.csproj", "{9D05BBB9-1B3E-487D-A98F-EEDAB98CBED7}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Platform.Serilog", "Common\Platform.Serilog\Platform.Serilog.csproj", "{C58215DF-E1C6-4143-A054-30D8D63AF028}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Platfrom.MQTTnet", "Common\Platfrom.MQTTnet\Platfrom.MQTTnet.csproj", "{72BF14B8-2ECC-433B-9D46-C4D6732F0FBD}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VmlMQTT.Auth.Api", "VmlMQTT.Auth.Api\VmlMQTT.Auth.Api.csproj", "{90245B72-2653-4790-9E26-582290B3FE7B}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VmlMQTT.Core", "VmlMQTT.Core\VmlMQTT.Core.csproj", "{E4C3AC11-8AC8-4A07-BBDF-23EF4EC32842}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VmlMQTT.Infratructure", "VmlMQTT.Infratructure\VmlMQTT.Infratructure.csproj", "{BCFE2E3E-0D36-4FB8-9363-36C35B5F8D75}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VmlMQTT.Application", "VmlMQTT.Application.Services\VmlMQTT.Application.csproj", "{F95EC812-CCB7-41E1-9041-9C81EB782757}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{64F85E41-1913-4554-BA8D-954D5FB15C31}"
+	ProjectSection(SolutionItems) = preProject
+		readMe.txt = readMe.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DbScripts", "DbScripts", "{D3637AC5-4E40-4060-BE40-7944074C2CA9}"
+	ProjectSection(SolutionItems) = preProject
+		DbScripts\initEMQXHost.sql = DbScripts\initEMQXHost.sql
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VmlMQTT.ClientTest", "Test\VmlMQTT.ClientTest\VmlMQTT.ClientTest.csproj", "{F150B491-F9B1-4FBF-B5D8-959CFF620B80}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{9CF6A261-E233-43BC-9BCC-77E08F72FA57}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VmlMQTT.NotificationTest", "Test\VmlMQTT.NotificationTest\VmlMQTT.NotificationTest.csproj", "{52569C9A-0DB4-4654-8D04-44969399A18A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Services", "Services", "{159FC3C2-6DE5-4990-BA76-D0AC6D8C1E4A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VmlMQTT.HandleVmlEvent.Service", "Services\VmlMQTT.HandleVmlEvent.Service\VmlMQTT.HandleVmlEvent.Service.csproj", "{F5448A24-1DF8-490E-8FD2-4B9394F44872}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VmlMQTT.ConsumerNotifyMessage.Service", "Services\VmlMQTT.ConsumerNotifyMessage.Service\VmlMQTT.ConsumerNotifyMessage.Service.csproj", "{75EB1E02-E3EC-4647-89A1-A6406C825867}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VietmapCloud.Shared.Redis", "Common\VietmapCloud.Shared.Redis\VietmapCloud.Shared.Redis.csproj", "{D24FF1D2-20CE-206D-8750-65643C1529D1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VmlMQTT.Webhook.Api", "VmlMQTT.Webhook.Api\VmlMQTT.Webhook.Api.csproj", "{0E40EBF4-A823-4F2A-9A04-5BA1DDCB8A2C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VmlMQTT.BrokersMonitor.Service", "VmlMQTT.BrokersMonitor.Service\VmlMQTT.BrokersMonitor.Service.csproj", "{804ACF57-54A6-0DE3-E51B-D4E08D1B858E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9D05BBB9-1B3E-487D-A98F-EEDAB98CBED7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D05BBB9-1B3E-487D-A98F-EEDAB98CBED7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D05BBB9-1B3E-487D-A98F-EEDAB98CBED7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D05BBB9-1B3E-487D-A98F-EEDAB98CBED7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C58215DF-E1C6-4143-A054-30D8D63AF028}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C58215DF-E1C6-4143-A054-30D8D63AF028}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C58215DF-E1C6-4143-A054-30D8D63AF028}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C58215DF-E1C6-4143-A054-30D8D63AF028}.Release|Any CPU.Build.0 = Release|Any CPU
+		{72BF14B8-2ECC-433B-9D46-C4D6732F0FBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72BF14B8-2ECC-433B-9D46-C4D6732F0FBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72BF14B8-2ECC-433B-9D46-C4D6732F0FBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72BF14B8-2ECC-433B-9D46-C4D6732F0FBD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90245B72-2653-4790-9E26-582290B3FE7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90245B72-2653-4790-9E26-582290B3FE7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90245B72-2653-4790-9E26-582290B3FE7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90245B72-2653-4790-9E26-582290B3FE7B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E4C3AC11-8AC8-4A07-BBDF-23EF4EC32842}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E4C3AC11-8AC8-4A07-BBDF-23EF4EC32842}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E4C3AC11-8AC8-4A07-BBDF-23EF4EC32842}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E4C3AC11-8AC8-4A07-BBDF-23EF4EC32842}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BCFE2E3E-0D36-4FB8-9363-36C35B5F8D75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCFE2E3E-0D36-4FB8-9363-36C35B5F8D75}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCFE2E3E-0D36-4FB8-9363-36C35B5F8D75}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCFE2E3E-0D36-4FB8-9363-36C35B5F8D75}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F95EC812-CCB7-41E1-9041-9C81EB782757}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F95EC812-CCB7-41E1-9041-9C81EB782757}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F95EC812-CCB7-41E1-9041-9C81EB782757}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F95EC812-CCB7-41E1-9041-9C81EB782757}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F150B491-F9B1-4FBF-B5D8-959CFF620B80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F150B491-F9B1-4FBF-B5D8-959CFF620B80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F150B491-F9B1-4FBF-B5D8-959CFF620B80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F150B491-F9B1-4FBF-B5D8-959CFF620B80}.Release|Any CPU.Build.0 = Release|Any CPU
+		{52569C9A-0DB4-4654-8D04-44969399A18A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{52569C9A-0DB4-4654-8D04-44969399A18A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{52569C9A-0DB4-4654-8D04-44969399A18A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{52569C9A-0DB4-4654-8D04-44969399A18A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5448A24-1DF8-490E-8FD2-4B9394F44872}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5448A24-1DF8-490E-8FD2-4B9394F44872}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5448A24-1DF8-490E-8FD2-4B9394F44872}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5448A24-1DF8-490E-8FD2-4B9394F44872}.Release|Any CPU.Build.0 = Release|Any CPU
+		{75EB1E02-E3EC-4647-89A1-A6406C825867}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{75EB1E02-E3EC-4647-89A1-A6406C825867}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{75EB1E02-E3EC-4647-89A1-A6406C825867}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{75EB1E02-E3EC-4647-89A1-A6406C825867}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D24FF1D2-20CE-206D-8750-65643C1529D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D24FF1D2-20CE-206D-8750-65643C1529D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D24FF1D2-20CE-206D-8750-65643C1529D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D24FF1D2-20CE-206D-8750-65643C1529D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E40EBF4-A823-4F2A-9A04-5BA1DDCB8A2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E40EBF4-A823-4F2A-9A04-5BA1DDCB8A2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E40EBF4-A823-4F2A-9A04-5BA1DDCB8A2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E40EBF4-A823-4F2A-9A04-5BA1DDCB8A2C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{804ACF57-54A6-0DE3-E51B-D4E08D1B858E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{804ACF57-54A6-0DE3-E51B-D4E08D1B858E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{804ACF57-54A6-0DE3-E51B-D4E08D1B858E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{804ACF57-54A6-0DE3-E51B-D4E08D1B858E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{9D05BBB9-1B3E-487D-A98F-EEDAB98CBED7} = {6EA82BDE-6766-40B8-A695-06DB9664FD88}
+		{C58215DF-E1C6-4143-A054-30D8D63AF028} = {6EA82BDE-6766-40B8-A695-06DB9664FD88}
+		{72BF14B8-2ECC-433B-9D46-C4D6732F0FBD} = {6EA82BDE-6766-40B8-A695-06DB9664FD88}
+		{F150B491-F9B1-4FBF-B5D8-959CFF620B80} = {9CF6A261-E233-43BC-9BCC-77E08F72FA57}
+		{52569C9A-0DB4-4654-8D04-44969399A18A} = {9CF6A261-E233-43BC-9BCC-77E08F72FA57}
+		{F5448A24-1DF8-490E-8FD2-4B9394F44872} = {159FC3C2-6DE5-4990-BA76-D0AC6D8C1E4A}
+		{75EB1E02-E3EC-4647-89A1-A6406C825867} = {159FC3C2-6DE5-4990-BA76-D0AC6D8C1E4A}
+		{D24FF1D2-20CE-206D-8750-65643C1529D1} = {6EA82BDE-6766-40B8-A695-06DB9664FD88}
+		{804ACF57-54A6-0DE3-E51B-D4E08D1B858E} = {159FC3C2-6DE5-4990-BA76-D0AC6D8C1E4A}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8280F5D6-2945-4254-8C11-AA14B442AAC1}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {47C259AE-23DE-4AB0-8AB6-BD2DC24E8F65}
+	EndGlobalSection
+EndGlobal

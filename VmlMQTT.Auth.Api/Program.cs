@@ -62,8 +62,13 @@ builder.Services.AddScoped<IUserSessionService, UserSessionService>();
 // Singletons
 builder.Services.AddSingleton<IMqttConnectionPool, MqttConnectionPool>();
 
-// Hosted services
-builder.Services.AddHostedService<ResponseManager>();
+// Singletons - FIXED: Register ResponseManager as singleton first, then add as hosted service
+builder.Services.AddSingleton<ResponseManager>();
+builder.Services.AddSingleton<IResponseManager>(provider => provider.GetRequiredService<ResponseManager>());
+builder.Services.AddSingleton<IMqttConnectionPool, MqttConnectionPool>();
+
+// Hosted services - FIXED: Use the singleton instance
+builder.Services.AddHostedService<ResponseManager>(provider => provider.GetRequiredService<ResponseManager>());
 builder.Services.AddHostedService<ResponseHostedService>();
 
 

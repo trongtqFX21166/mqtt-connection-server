@@ -74,8 +74,8 @@ namespace VmlMQTT.Application.Services
                 {
                     Host = sessionInfo.Host,
                     Port = sessionInfo.Port,
-                    Username = sessionInfo.Username,
-                    Password = sessionInfo.Password
+                    Username = _configuration["MQTT:username"],
+                    Password = _configuration["MQTT:password"]
                 };
 
                 var client = await _connectionPool.GetConnectionAsync(sessionInfo.Host, connectionConfig);
@@ -88,7 +88,7 @@ namespace VmlMQTT.Application.Services
                 var message = new MqttApplicationMessageBuilder()
                     .WithTopic(topic)
                     .WithPayload(commandMessage)
-                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.ExactlyOnce)
+                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                     .WithRetainFlag(false)
                     .Build();
 

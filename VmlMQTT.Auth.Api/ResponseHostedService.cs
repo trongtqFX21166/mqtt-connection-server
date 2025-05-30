@@ -13,26 +13,30 @@ namespace VmlMQTT.Auth.Api
     public class ResponseHostedService : BackgroundService
     {
         private readonly ILogger<ResponseHostedService> _logger;
-        private readonly IEmqxBrokerHostRepository _brokerRepository;
+        private readonly IServiceScopeFactory _scopeFactory; // Changed: Use scope factory instead of direct injection
         private readonly IResponseManager _responseManager;
         private readonly IConfiguration _configuration;
         private readonly List<IMqttClient> _clients = new();
 
         public ResponseHostedService(
             ILogger<ResponseHostedService> logger,
-            IEmqxBrokerHostRepository brokerRepository,
+            IServiceScopeFactory scopeFactory, // Changed: Inject scope factory
             IResponseManager responseManager,
             IConfiguration configuration)
         {
             _logger = logger;
-            _brokerRepository = brokerRepository;
+            _scopeFactory = scopeFactory; // Changed: Store scope factory
             _responseManager = responseManager;
             _configuration = configuration;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var brokers = await _brokerRepository.GetAllAsync();
+            // Changed: Create scope to access scoped services
+            using var scope = _scopeFactory.CreateScope();
+            var brokerRepository = scope.ServiceProvider.GetRequiredService<IEmqxBrokerHostRepository>();
+
+            var brokers = await brokerRepository.GetAllAsync();
             var activeBrokers = brokers.Where(b => b.IsActive).ToList();
 
             foreach (var broker in activeBrokers)

@@ -44,14 +44,7 @@ namespace VmlMQTT.Auth.Api.Controllers
                     Data = result
                 };
 
-                if (result.Success)
-                {
-                    return Ok(response);
-                }
-                else
-                {
-                    return StatusCode(result.Code, response);
-                }
+                return Ok(response);
             }
             catch (Exception ex)
             {

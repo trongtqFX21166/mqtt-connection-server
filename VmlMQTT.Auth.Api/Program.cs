@@ -66,9 +66,6 @@ builder.Services.AddSingleton<IMqttConnectionPool, MqttConnectionPool>();
 builder.Services.AddHostedService<ResponseManager>();
 builder.Services.AddHostedService<ResponseHostedService>();
 
-// Memory cache
-services.AddMemoryCache();
-
 
 // Configure settings
 builder.Services.Configure<ClientSetting>(

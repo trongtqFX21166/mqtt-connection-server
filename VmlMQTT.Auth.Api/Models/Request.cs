@@ -39,14 +39,13 @@
         public string Icon { get; set; }
     }
 
-    public class SendCommandRequest
+    public class MqttConnectionConfig
     {
-        public string DeviceId { get; set; }
-
-        public string SessionId { get; set; }
-
-        public string Phone { get; set; }
-
-        public string RequestId { get; set; }
+        public string Host { get; set; }
+        public int Port { get; set; } = 1883;
+        public string Username { get; set; }
+        public string Password { get; set; }
+        public string ClientId { get; set; }
+        public int KeepAliveSeconds { get; set; } = 60;
     }
 }

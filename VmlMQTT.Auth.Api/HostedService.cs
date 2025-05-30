@@ -1,15 +1,11 @@
-﻿using MQTTnet.Client;
-using MQTTnet;
+﻿using MQTTnet;
+using MQTTnet.Client;
 using Newtonsoft.Json;
 using Platfrom.MQTTnet;
 using Platfrom.MQTTnet.Models;
 using System.Collections.Concurrent;
-using VmlMQTT.Application.Models;
 using VmlMQTT.Core.Interfaces.Repositories;
-using MQTTnet.Formatter;
-using VmlMQTT.Application.Interfaces;
-using Microsoft.Extensions.Options;
-using VmlMQTT.Application.Services;
+using VmlMQTT.Auth.Api.Models;
 
 namespace VmlMQTT.Auth.Api
 {

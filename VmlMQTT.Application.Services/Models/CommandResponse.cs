@@ -2,13 +2,13 @@
 {
     public class CommandResponse
     {
-        public string proNo { get; set; }
-        public string deviceImei { get; set; }
-        public bool offlineFlag { get; set; } = false;
-        public string requestId { get; set; }
-        public int code { get; set; }
-        public string msg { get; set; }
-
-        public DateTime ExpiredTime { get; set; }
+        public string ProNo { get; set; }
+        public string DeviceImei { get; set; }
+        public bool OfflineFlag { get; set; }
+        public string RequestId { get; set; }
+        public int Code { get; set; }
+        public string Message { get; set; }
+        public DateTime ReceivedAt { get; set; } = DateTime.UtcNow;
+        public object Data { get; set; }
     }
 }

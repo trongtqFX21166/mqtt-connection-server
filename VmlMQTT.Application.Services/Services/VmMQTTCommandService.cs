@@ -1,245 +1,179 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
-using MQTTnet.Client;
 using MQTTnet.Protocol;
 using Newtonsoft.Json;
-using Platfrom.MQTTnet;
-using Platfrom.MQTTnet.Models;
-using System.Collections.Concurrent;
-using System.Xml;
 using VmlMQTT.Application.Interfaces;
 using VmlMQTT.Application.Models;
-using VmlMQTT.Core.Interfaces.Repositories;
 
 namespace VmlMQTT.Application.Services
 {
-    public class VmMQTTCommandService : IVmMQTTCommandService
+    public class CommandService : ICommandService
     {
-        private readonly ILogger<VmMQTTCommandService> _logger;
-        private readonly IUserRepository _userRepository;
-        private readonly IUserSessionRepository _userSessionRepository;
-        private static IMqttClient _mqttClient;
-        private static MqttFactory _mqttFactory;
+        private readonly ICommandValidator _validator;
+        private readonly IMqttConnectionPool _connectionPool;
+        private readonly IResponseManager _responseManager;
+        private readonly IUserSessionService _sessionService;
+        private readonly ILogger<CommandService> _logger;
         private readonly IConfiguration _configuration;
 
-
-
-        // private readonly IEMQXBrokerApi _emQXBrokerApi;
-
-        public VmMQTTCommandService(ILogger<VmMQTTCommandService> logger
-            , IUserRepository userRepository
-            , IUserSessionRepository userSessionRepository
-, IConfiguration configuration
-/*, IEMQXBrokerApi emQXBrokerApi*/)
+        public CommandService(
+            ICommandValidator validator,
+            IMqttConnectionPool connectionPool,
+            IResponseManager responseManager,
+            IUserSessionService sessionService,
+            ILogger<CommandService> logger,
+            IConfiguration configuration)
         {
+            _validator = validator;
+            _connectionPool = connectionPool;
+            _responseManager = responseManager;
+            _sessionService = sessionService;
             _logger = logger;
-            _userRepository = userRepository;
-            _userSessionRepository = userSessionRepository;
             _configuration = configuration;
-            //_emQXBrokerApi = emQXBrokerApi;
         }
 
-        private static async Task PublishNotification(string topic, string msg)
+        public async Task<CommandResult> SendCommandAsync(SendCommandRequest request, CancellationToken cancellationToken = default)
         {
-            if (_mqttClient?.IsConnected != true)
-            {
-                Console.WriteLine("Not connected to MQTT broker!");
-                return;
-            }
+            var startTime = DateTime.UtcNow;
 
             try
             {
-                //string jsonPayload = JsonSerializer.Serialize(notification);
+                // 1. Validate request
+                var validationResult = await _validator.ValidateAsync(request);
+                if (!validationResult.IsValid)
+                {
+                    return new CommandResult
+                    {
+                        Success = false,
+                        Code = 400,
+                        Message = string.Join("; ", validationResult.Errors),
+                        RequestId = request.RequestId,
+                        Duration = DateTime.UtcNow - startTime
+                    };
+                }
 
-                var applicationMessage = new MqttApplicationMessageBuilder()
+                // 2. Check permissions
+                if (!await _sessionService.HasCommandPermissionAsync(request.Phone, request.DeviceId, request.Command))
+                {
+                    return new CommandResult
+                    {
+                        Success = false,
+                        Code = 403,
+                        Message = "Insufficient permissions to execute this command",
+                        RequestId = request.RequestId,
+                        Duration = DateTime.UtcNow - startTime
+                    };
+                }
+
+                // 3. Get session info
+                var sessionInfo = await _sessionService.GetSessionAsync(request.Phone, request.DeviceId);
+
+                // 4. Get MQTT connection
+                var connectionConfig = new MqttConnectionConfig
+                {
+                    Host = sessionInfo.Host,
+                    Port = sessionInfo.Port,
+                    Username = sessionInfo.Username,
+                    Password = sessionInfo.Password
+                };
+
+                var client = await _connectionPool.GetConnectionAsync(sessionInfo.Host, connectionConfig);
+
+                // 5. Build command message
+                var commandMessage = BuildCommandMessage(request, sessionInfo);
+                var topic = GetCommandTopic(sessionInfo, request);
+
+                // 6. Send command
+                var message = new MqttApplicationMessageBuilder()
                     .WithTopic(topic)
-                    .WithPayload(msg)
-                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
+                    .WithPayload(commandMessage)
+                    .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.ExactlyOnce)
                     .WithRetainFlag(false)
                     .Build();
 
-                await _mqttClient.PublishAsync(applicationMessage, CancellationToken.None);
-                Console.WriteLine($"Notification sent to topic: {topic}");
-                // Console.WriteLine($"Payload: {jsonPayload}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error sending notification: {ex.Message}");
-            }
-        }
+                await client.PublishAsync(message, cancellationToken);
 
-        private static async Task HandleDisconnected(MqttClientDisconnectedEventArgs args)
-        {
-            Console.WriteLine("Disconnected from MQTT broker!");
+                _logger.LogInformation("Command sent to device {DeviceId} via topic {Topic}",
+                    request.DeviceId, topic);
 
-            if (args.Exception != null)
-            {
-                Console.WriteLine($"Reason: {args.Exception.Message}");
-            }
+                // 7. Wait for response
+                var timeout = TimeSpan.FromSeconds(request.TimeoutSeconds);
+                var response = await _responseManager.WaitForResponseAsync(request.RequestId, timeout, cancellationToken);
 
-            await Task.CompletedTask;
-        }
-
-        private static async Task ConnectToMqttBroker(MQTTConfig mQTTConfig)
-        {
-            Console.WriteLine($"Connecting to MQTT broker at {mQTTConfig.Host}:{mQTTConfig.Port}...");
-
-            _mqttFactory = new MqttFactory();
-            _mqttClient = _mqttFactory.CreateMqttClient();
-
-            // Configure client options
-            var options = new MqttClientOptionsBuilder()
-                .WithTcpServer(mQTTConfig.Host, mQTTConfig.Port)
-                .WithCredentials(mQTTConfig.UserName, mQTTConfig.Password)
-                .WithClientId($"notification-service-{Guid.NewGuid()}")
-                .WithCleanSession(true)
-                .Build();
-
-            // Set up handlers
-            _mqttClient.DisconnectedAsync += HandleDisconnected;
-
-            // Connect
-            await _mqttClient.ConnectAsync(options, CancellationToken.None);
-
-            Console.WriteLine("Connected to MQTT broker successfully!");
-        }
-
-        public async Task<IOTHubResponse<string>> SendCommand(SendCommandRequest request)
-        {
-            var user = await _userRepository.GetByPhoneAsync(request.Phone);
-
-            if(user == null)
-            {
-                return new IOTHubResponse<string>
+                return new CommandResult
                 {
-                    Code = 404,
-                    Msg = "User not found"
-                };
-            }
-
-            var userSession = await _userSessionRepository.GetByUserIdAndDeviceIdAsync(user.VMLUserId, request.DeviceId);
-
-            if (userSession == null)
-            {
-                return new IOTHubResponse<string>
-                {
-                    Code = 404,
-                    Msg = "Session not found"
-                };
-            }
-
-            await ConnectToMqttBroker(new MQTTConfig
-            {
-                Host = userSession.Host,
-                UserName = _configuration["MQTT:username"],
-                Password = _configuration["MQTT:password"],
-                Port = int.Parse(_configuration["MQTT:port"])
-            });
-
-            return await SendMsg(request.SessionId,
-                request.RequestId,
-                $"vml_command_client_request/2/{userSession.UniqueId}",
-                JsonConvert.SerializeObject(new CommandRequest
-                {
+                    Success = response.Code == 200,
+                    Code = response.Code,
+                    Message = response.Message,
+                    Data = response.Data,
                     RequestId = request.RequestId,
-                    SessionId = request.SessionId
-                }),
-                request.ResponseCommands);
-        }
-
-        private async Task<IOTHubResponse<string>> SendMsg(string sessionId,
-            string requestId,
-            string topic,
-            string msg,
-            ConcurrentDictionary<string, List<CommandResponse>> responseCommands)
-        {
-            try
+                    Duration = DateTime.UtcNow - startTime
+                };
+            }
+            catch (OperationCanceledException)
             {
-                await PublishNotification(topic, msg);
-
-                int count = 1;
-                do
+                return new CommandResult
                 {
-                    await Task.Delay(100); // await 100ms
-
-                    if (!responseCommands.ContainsKey(sessionId))
-                    {
-                        responseCommands.TryAdd(sessionId, new List<CommandResponse>());
-                    }
-
-                    if (responseCommands[sessionId].Any(x => x.requestId == requestId))
-                    {
-                        var rsp = responseCommands[sessionId].FirstOrDefault(x => x.requestId == requestId);
-
-                        if (rsp.code != 100)
-                        {
-                            _logger.LogDebug("{sessionId} send command::{requestId} response error {response}", sessionId, requestId, JsonConvert.SerializeObject(new
-                            {
-                                _code = rsp.code,
-                                _msg = rsp.msg,
-                                _sessionId = sessionId,
-                                _requestId = requestId
-                            }, Newtonsoft.Json.Formatting.None));
-                        }
-
-                        return new IOTHubResponse<string>
-                        {
-                            Code = 0,
-                            Msg = rsp.msg,
-                            Data = JsonConvert.SerializeObject(new
-                            {
-                                _code = rsp.code,
-                                _msg = rsp.msg,
-                                _sessionId = sessionId,
-                                _requestId = requestId
-                            }),
-                        };
-                    }
-
-                    if (count > 300) // wait for 30s
-                    {
-                        break;
-                    }
-
-                    count++;
-                    continue;
-
-                } while (true);
-
-
-                _logger.LogInformation($"{sessionId} send command timeout");
-
-                return new IOTHubResponse<string>
+                    Success = false,
+                    Code = 408,
+                    Message = "Command was cancelled",
+                    RequestId = request.RequestId,
+                    Duration = DateTime.UtcNow - startTime
+                };
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid operation while sending command");
+                return new CommandResult
                 {
-                    Code = 600,
-                    Msg = "Request timeout",
-                    Data = JsonConvert.SerializeObject(new
-                    {
-                        _code = 600,
-                        _msg = "Request timeout",
-                        _sessionId = sessionId,
-                        _requestId = requestId
-                    }),
+                    Success = false,
+                    Code = 404,
+                    Message = ex.Message,
+                    RequestId = request.RequestId,
+                    Duration = DateTime.UtcNow - startTime
                 };
             }
             catch (Exception ex)
             {
-                return new IOTHubResponse<string>
+                _logger.LogError(ex, "Error sending command to device {DeviceId}", request.DeviceId);
+                return new CommandResult
                 {
+                    Success = false,
                     Code = 500,
-                    Msg = ex.Message,
-                    Data = JsonConvert.SerializeObject(new
-                    {
-                        _code = 500,
-                        _msg = ex.Message,
-                        _sessionId = sessionId,
-                        _requestId = requestId
-                    }),
+                    Message = "Internal server error",
+                    RequestId = request.RequestId,
+                    Duration = DateTime.UtcNow - startTime
                 };
+            }
+        }
 
+        private string BuildCommandMessage(SendCommandRequest request, UserSessionInfo sessionInfo)
+        {
+            var commandPayload = new
+            {
+                request_id = request.RequestId,
+                session_id = sessionInfo.SessionId,
+                command = request.Command,
+                parameters = request.Parameters,
+                timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                timeout_seconds = request.TimeoutSeconds
+            };
+
+            return JsonConvert.SerializeObject(commandPayload);
+        }
+
+        private string GetCommandTopic(UserSessionInfo sessionInfo, SendCommandRequest request)
+        {
+            string cmdTopic = string.Empty;
+            // Use the first publish topic or construct one
+            if (sessionInfo.SubscribeTopics.Any())
+            {
+                cmdTopic = sessionInfo.SubscribeTopics?.FirstOrDefault(x => x.StartsWith("vml_command_client_request")) ?? string.Empty;
             }
 
+            // Fallback topic construction
+            return !string.IsNullOrWhiteSpace(cmdTopic) ? cmdTopic : $"vml_command_client_request/{sessionInfo.SessionId}";
         }
     }
 }

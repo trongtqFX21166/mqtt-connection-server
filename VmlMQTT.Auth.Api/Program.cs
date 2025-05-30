@@ -44,7 +44,6 @@ builder.Services.AddScoped<IUserSessionRepository, UserSessionRepository>();
 builder.Services.AddScoped<IEmqxBrokerHostRepository, EmqxBrokerHostRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IVmMQTTCommandService, VmMQTTCommandService>();
 //builder.Services.AddHostedService<HostedService>();
 
 builder.Services.Configure<MQTTConfig>(builder.Configuration.GetSection("MQTT"));
@@ -54,6 +53,22 @@ builder.Services.AddSingleton<IMQTTPublish, MQTTPublish>();
 // Register application services
 builder.Services.AddScoped<IMqttAuthService, MqttAuthService>();
 builder.Services.AddScoped<IEmqxBrokerService, EmqxBrokerService>();
+
+// Core services
+builder.Services.AddScoped<ICommandService, CommandService>();
+builder.Services.AddScoped<ICommandValidator, CommandValidator>();
+builder.Services.AddScoped<IUserSessionService, UserSessionService>();
+
+// Singletons
+builder.Services.AddSingleton<IMqttConnectionPool, MqttConnectionPool>();
+
+// Hosted services
+builder.Services.AddHostedService<ResponseManager>();
+builder.Services.AddHostedService<ResponseHostedService>();
+
+// Memory cache
+services.AddMemoryCache();
+
 
 // Configure settings
 builder.Services.Configure<ClientSetting>(

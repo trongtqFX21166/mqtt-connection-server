@@ -4,12 +4,11 @@ namespace VmlMQTT.Application.Models
 {
     public class SendCommandRequest
     {
-        public string SessionId { get; set; }
+        public Guid? SeqId { get; set; }
+
         public string DeviceId { get; set; }
         public string Phone { get; set; }
-        public string RequestId { get; set; }
-        public string Command { get; set; }
-        public Dictionary<string, object> Parameters { get; set; } = new();
-        public int TimeoutSeconds { get; set; } = 30;
+        public string PayLoad { get; set; }
+        public bool IsAsync { get; set; } = false;
     }
 }

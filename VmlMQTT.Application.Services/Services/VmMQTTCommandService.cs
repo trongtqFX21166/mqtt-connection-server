@@ -48,7 +48,7 @@ namespace VmlMQTT.Application.Services
                         Success = false,
                         Code = 400,
                         Message = string.Join("; ", validationResult.Errors),
-                        RequestId = request.RequestId,
+                        SeqId = request.RequestId,
                         Duration = DateTime.UtcNow - startTime
                     };
                 }
@@ -61,7 +61,7 @@ namespace VmlMQTT.Application.Services
                         Success = false,
                         Code = 403,
                         Message = "Insufficient permissions to execute this command",
-                        RequestId = request.RequestId,
+                        SeqId = request.RequestId,
                         Duration = DateTime.UtcNow - startTime
                     };
                 }
@@ -107,7 +107,7 @@ namespace VmlMQTT.Application.Services
                     Code = response.Code,
                     Message = response.Message,
                     Data = response.Data,
-                    RequestId = request.RequestId,
+                    SeqId = request.RequestId,
                     Duration = DateTime.UtcNow - startTime
                 };
             }
@@ -118,7 +118,7 @@ namespace VmlMQTT.Application.Services
                     Success = false,
                     Code = 408,
                     Message = "Command was cancelled",
-                    RequestId = request.RequestId,
+                    SeqId = request.RequestId,
                     Duration = DateTime.UtcNow - startTime
                 };
             }
@@ -130,7 +130,7 @@ namespace VmlMQTT.Application.Services
                     Success = false,
                     Code = 404,
                     Message = ex.Message,
-                    RequestId = request.RequestId,
+                    SeqId = request.RequestId,
                     Duration = DateTime.UtcNow - startTime
                 };
             }
@@ -142,7 +142,7 @@ namespace VmlMQTT.Application.Services
                     Success = false,
                     Code = 500,
                     Message = "Internal server error",
-                    RequestId = request.RequestId,
+                    SeqId = request.RequestId,
                     Duration = DateTime.UtcNow - startTime
                 };
             }

@@ -13,6 +13,6 @@ namespace VmlMQTT.Application.Models
         public int Code { get; set; }
         public object Data { get; set; }
         public TimeSpan Duration { get; set; }
-        public string RequestId { get; set; }
+        public Guid SeqId { get; set; }
     }
 }
